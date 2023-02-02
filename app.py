@@ -1,6 +1,6 @@
-import tkinter as tk
 import cv2
 import numpy as np
+import tkinter as tk
 
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
@@ -13,17 +13,25 @@ class ImageModifierApp:
         self.placeholder_img = ImageTk.PhotoImage(self.placeholder_img)
 
         self.label_img = tk.Label(root, image = self.placeholder_img)
-        self.label_img.pack(padx= 10, pady=10)
+        self.label_img.grid(row=0, column=0, columnspan=2)
 
         self.button_open_img = tk.Button(root, text = "Select Image", command = self.open_image_btn)
-        self.button_open_img.pack(pady=5)
+        self.button_open_img.grid(row=1, column=0, pady=10)
 
         self.button_save_img = tk.Button(root, text = "Save Image", command = self.save_image_btn)
-        self.button_save_img.pack(pady=5)
+        self.button_save_img.grid(row=1, column=1)
 
         self.button_threshold_img = tk.Button(root, text= "Binary Threshold Toggle", command = self.binary_threshold_toggle_btn)
-        self.button_threshold_img.pack(pady=5)
+        self.button_threshold_img.grid(row=2, column=0, columnspan=2)
+        
+        self.button_flip_horizontal = tk.Button(root, text= "Horizontal Flip", command = lambda : self.flip_image_button(1))
+        self.button_flip_horizontal.grid(row=3, column=0, pady=10)
 
+        self.button_flip_vertical = tk.Button(root, text= "Vertical Flip", command = lambda : self.flip_image_button(0))
+        self.button_flip_vertical.grid(row=3, column=1)
+
+        self.slider_brightness_text_label = tk.Label(root, text="Brightness")
+        self.slider_brightness_text_label.grid(row=4, column=0, columnspan=2)
         self.slider_brightness = tk.Scale(
             root, 
             from_ = 0, 
@@ -34,7 +42,7 @@ class ImageModifierApp:
             command = self.change_brightness_slider
         )
         self.slider_brightness.set(1)
-        self.slider_brightness.pack()
+        self.slider_brightness.grid(row=5, column=0, columnspan=2)
 
     def __update_label(self):
         self.label_img.config(image = self.current_modified_image.img_for_display)
@@ -47,16 +55,20 @@ class ImageModifierApp:
             self.__update_label()
         except:
             return
-
-    def binary_threshold_toggle_btn(self):
-        self.current_modified_image.binary_threshold_toggle()
-        self.__update_label()
     
     def save_image_btn(self):
         self.current_modified_image.save_image()
 
+    def binary_threshold_toggle_btn(self):
+        self.current_modified_image.binary_threshold_toggle()
+        self.__update_label()
+
     def change_brightness_slider(self, val):
         self.current_modified_image.change_brightness(val)
+        self.__update_label()
+    
+    def flip_image_button(self, mode : int):
+        self.current_modified_image.flip_image(mode)
         self.__update_label()
     
 
@@ -118,13 +130,19 @@ class ModifiedImage:
         if self.img is not None:
             self.is_binary_threshold = not self.is_binary_threshold
 
-        # This will call messagebox error if img is not loaded yet
+        # This will call messagebox error if img hasnt been loaded yet
         self.__apply_change()
 
     def change_brightness(self, val):
         if self.img is not None:
             self.brightness_value = float(val)
             self.__apply_change()
+
+    def flip_image(self, mode):
+        if self.img is not None:
+            self.img = cv2.flip(self.img, mode)
+        self.__apply_change()
+
 
 
 def main():
