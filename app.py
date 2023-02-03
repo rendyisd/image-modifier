@@ -15,19 +15,8 @@ class ImageModifierApp:
         self.frame1.grid(row=0, column=0)
         self.frame2.grid(row=0, column=1)
 
-        self.placeholder_img = Image.new(mode = "L", size = (300, 300), color = "gray")
-        self.placeholder_img = ImageTk.PhotoImage(self.placeholder_img)
-
-        # self.label_img = tk.Label(self.frame1, image = self.placeholder_img)
-        # self.label_img.pack()
-
-        self.image_canvas = tk.Canvas(self.frame1, width=300, height=300)
+        self.image_canvas = tk.Canvas(self.frame1, width=960, height=540)
         self.image_canvas.pack()
-        self.image_canvas.create_image(
-            0, 0, 
-            image=self.placeholder_img,
-            anchor=tk.NW
-        )
 
         self.button_open_img = tk.Button(self.frame2, text = "Select Image", command = self.open_image_btn)
         self.button_open_img.grid(row=0, column=0, pady=10)
@@ -71,26 +60,49 @@ class ImageModifierApp:
         )
         self.slider_rotate.grid(row=6, column=0, columnspan=2)
 
+        self.slider_rescale_text_label = tk.Label(self.frame2, text="Image Size Multiplier")
+        self.slider_rescale_text_label.grid(row=7, column=0, columnspan=2)
+        self.slider_rescale = tk.Scale(
+            self.frame2, 
+            from_ = 0.5, 
+            to = 1.5, 
+            orient = "horizontal", 
+            length = 200, 
+            resolution = 0.1, 
+            command = self.rescale_image_slider
+        )
+        self.slider_rescale.set(1)
+        self.slider_rescale.grid(row=8, column=0, columnspan=2)
+
+
     def __update_canvas(self):
         self.image_canvas.delete("all")
-        if self.current_modified_image.img is not None:
-            self.image_canvas.config(
-                width = self.current_modified_image.img.shape[1],
-                height = self.current_modified_image.img.shape[0]
-            )
-        self.image_canvas.create_image(
-            0, 0, 
-            image=self.current_modified_image.img_for_display,
-            anchor=tk.NW
-        )
 
-    def open_image_btn(self):
-        self.current_modified_image.open_image()
+        canvas_width = self.image_canvas.winfo_width()
+        canvas_height = self.image_canvas.winfo_height()
+        center_x = canvas_width // 2
+        center_y = canvas_height // 2
 
+        multiplier = 1 if self.current_modified_image.rescale_multiplier > 1 else self.current_modified_image.rescale_multiplier
+        image_width = int(self.current_modified_image.img_display_width * multiplier)
+        image_height = int(self.current_modified_image.img_display_height * multiplier)
         try:
-            self.__update_canvas()
+            self.image_canvas.create_image(
+                center_x - (image_width // 2),
+                center_y - (image_height // 2), 
+                image=self.current_modified_image.img_display,
+                anchor=tk.NW
+            )
         except:
             return
+
+    def open_image_btn(self):
+        self.current_modified_image.open_image(
+            self.image_canvas.winfo_width(),
+            self.image_canvas.winfo_height()
+        )
+
+        self.__update_canvas()
     
     def save_image_btn(self):
         self.current_modified_image.save_image()
@@ -111,40 +123,65 @@ class ImageModifierApp:
         self.current_modified_image.rotate_image(degree)
         self.__update_canvas()
 
+    def rescale_image_slider(self, multiplier):
+        self.current_modified_image.rescale_image(multiplier)
+        self.__update_canvas()
+
+        
+
 class ModifiedImage:
     def __init__(self):
         self.file_path = ""
+
         self.img = None
-        self.img_for_display = None
+        self.img_width = 0
+        self.img_height = 0
+
+        self.img_display = None
+        self.img_display_width = 0
+        self.img_display_height = 0
 
         self.is_binary_threshold = False
         self.brightness_value = 1
         self.rotate_degree = 0
+        self.rescale_multiplier = 1
 
     def __apply_change(self):
         try:
             rows, cols = self.img.shape[:2]
             rotation_M = cv2.getRotationMatrix2D((cols / 2, rows / 2), self.rotate_degree, 1)
 
+            # Apply change brightness
             tmp_img = cv2.convertScaleAbs(self.img, alpha = self.brightness_value, beta = 0)
+
+            # Apply rotate image
             tmp_img = cv2.warpAffine(tmp_img, rotation_M, (cols, rows))
             
+            # Apply binary threshold
             if self.is_binary_threshold:
                 _, tmp_img = cv2.threshold(tmp_img, 128, 255, cv2.THRESH_BINARY)
             
-            self.img_for_display = self.__array_to_photoimage(tmp_img)
+            # Prepare the image for display which includes resizing the displayed image
+            self.img_display = self.__array_to_photoimage_resize(tmp_img)
 
             return tmp_img
         except:
             messagebox.showerror("Error!", "No image selected!")
 
-    def __array_to_photoimage(self, img_array):
+    def __array_to_photoimage_resize(self, img_array):
         img_array = Image.fromarray(np.uint8(img_array))
+        multiplier = 1 if self.rescale_multiplier > 1 else self.rescale_multiplier
+        
+        img_array = img_array.resize((
+            int(self.img_display_width * multiplier),
+            int(self.img_display_height * multiplier)
+        ))
+
         img_array = ImageTk.PhotoImage(img_array)
 
         return img_array
     
-    def open_image(self):
+    def open_image(self, canvas_width, canvas_height):
         tmp_file_path = filedialog.askopenfilename()
 
         if tmp_file_path:
@@ -152,16 +189,37 @@ class ModifiedImage:
 
             self.img = cv2.imread(self.file_path, cv2.IMREAD_ANYCOLOR)
             self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB)
-            # self.img = cv2.resize(self.img, dsize=(300, 300), interpolation=cv2.INTER_CUBIC)
 
-            self.img_for_display = self.__array_to_photoimage(self.img)
-    
+            self.img_height, self.img_width = self.img.shape[:2]
+            self.img_display_height, self.img_display_width = self.img.shape[:2]
+            aspect_ratio = self.img_display_width / self.img_display_height
+
+            # Scale to fit the canvas
+            if(self.img_display_width > canvas_width):
+                self.img_display_width = canvas_width
+                self.img_display_height = int(self.img_display_width / aspect_ratio)
+            
+            if(self.img_display_height > canvas_height):
+                self.img_display_height = canvas_height
+
+            self.img_display = self.__array_to_photoimage_resize(self.img)
+
     def save_image(self):
         file_name = self.file_path.split('/')[-1]
         file_ext = file_name[file_name.find('.')+1:]
         file_name = file_name[:file_name.find('.')]
 
         final_img = self.__apply_change()
+
+        # Apply image rescale
+        final_img = cv2.resize(
+            final_img,
+            (
+                int(self.img_width * self.rescale_multiplier),
+                int(self.img_height * self.rescale_multiplier)
+            ),
+            interpolation=cv2.INTER_CUBIC
+        )
 
         try:
             final_img = cv2.cvtColor(final_img, cv2.COLOR_BGR2RGB)
@@ -191,11 +249,18 @@ class ModifiedImage:
         if self.img is not None:
             self.rotate_degree = int(degree)
             self.__apply_change()
+
+    def rescale_image(self, multiplier):
+        if self.img is not None:
+            self.rescale_multiplier = float(multiplier)
+            self.__apply_change()
         
 
 def main():
     root = tk.Tk()
     root.title("Image Modifier")
+    root.geometry("+50+50")
+
     app = ImageModifierApp(root)
     root.mainloop()
 
