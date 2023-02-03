@@ -258,8 +258,9 @@ class ModifiedImage:
 
 def main():
     root = tk.Tk()
-    root.title("Image Modifier")
+    root.resizable(False, False)
     root.geometry("+50+50")
+    root.title("Image Modifier")
 
     app = ImageModifierApp(root)
     root.mainloop()
