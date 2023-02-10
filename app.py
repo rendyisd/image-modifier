@@ -203,10 +203,23 @@ class ModifiedImage:
                                     [-1, 5, -1],
                                     [0, -1, 0]])
                 tmp_img = self.__convolution(tmp_img, kernel)
+                # tmp_img = cv2.filter2D(tmp_img, ddepth=-1, kernel=kernel)
             
             # Apply deblur
+            if self.is_deblur:
+                # Wiener filter
+                kernel = np.array([[0.05, 0.1, 0.05],
+                                    [0.1, 0.4, 0.1],
+                                    [0.05, 0.1, 0.05]])
+                tmp_img = self.__convolution(tmp_img, kernel)
 
             # Apply soble edge detection
+            if self.is_sobel_ed:
+                # X direction kernel
+                kernel = np.array([[-1, 0, 1],
+                                    [-2, 0, 2],
+                                    [-1, 0, 1]])
+                tmp_img = self.__convolution(tmp_img, kernel)
             
             # Prepare the image for display which includes resizing the displayed image
             self.img_display = self.__array_to_photoimage_resize(tmp_img)
@@ -230,6 +243,8 @@ class ModifiedImage:
 
     def __convolution(self, img : np.ndarray, kernel : np.ndarray):
         # Grayscale image only
+        max_grayness = np.amax(img)
+
         img_rows, img_cols = img.shape
         kernel_rows, kernel_cols = kernel.shape
         
@@ -238,7 +253,6 @@ class ModifiedImage:
         
         img_res = np.zeros((res_rows, res_cols))
         
-        max_grayness = np.amax(img)
         for i in range(res_rows):
             for j in range(res_cols):
                 img_res[i][j] = np.clip(
@@ -289,7 +303,9 @@ class ModifiedImage:
         )
 
         try:
-            final_img = cv2.cvtColor(final_img, cv2.COLOR_BGR2RGB)
+            if final_img.ndim == 3:
+                final_img = cv2.cvtColor(final_img, cv2.COLOR_BGR2RGB)
+                
             cv2.imwrite(f"{file_name}_modified.{file_ext}", final_img)
             messagebox.showinfo("Success!", "The image has been saved succesfully")
         except:
@@ -333,7 +349,7 @@ class ModifiedImage:
             self.is_sharpen = not self.is_sharpen
         self.__apply_change()
 
-    def sharpen_toggle(self):
+    def deblur_toggle(self):
         if self.img is not None:
             self.is_deblur = not self.is_deblur
         self.__apply_change()
