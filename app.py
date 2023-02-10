@@ -203,7 +203,6 @@ class ModifiedImage:
                                     [-1, 5, -1],
                                     [0, -1, 0]])
                 tmp_img = self.__convolution(tmp_img, kernel)
-                # tmp_img = cv2.filter2D(tmp_img, ddepth=-1, kernel=kernel)
             
             # Apply deblur
             if self.is_deblur:
