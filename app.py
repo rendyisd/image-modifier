@@ -19,22 +19,25 @@ class ImageModifierApp:
         self.image_canvas.pack()
 
         self.button_open_img = tk.Button(self.frame2, text = "Select Image", command = self.open_image_btn)
-        self.button_open_img.grid(row=0, column=0, pady=10)
+        self.button_open_img.grid(row=0, column=0, pady=(0, 10))
 
         self.button_save_img = tk.Button(self.frame2, text = "Save Image", command = self.save_image_btn)
-        self.button_save_img.grid(row=0, column=1)
+        self.button_save_img.grid(row=0, column=1, pady=(0, 10))
 
         self.button_threshold_img = tk.Button(self.frame2, text= "Binary Threshold Toggle", command = self.binary_threshold_toggle_btn)
-        self.button_threshold_img.grid(row=1, column=0, columnspan=2)
+        self.button_threshold_img.grid(row=1, column=0, columnspan=2, pady=(0, 10))
+
+        self.button_grayscale_img = tk.Button(self.frame2, text= "Grayscale Toggle", command = self.grayscale_toggle_btn)
+        self.button_grayscale_img.grid(row=2, column=0, columnspan=2, pady = (0, 10))
         
         self.button_flip_horizontal = tk.Button(self.frame2, text= "Horizontal Flip", command = lambda : self.flip_image_btn(1))
-        self.button_flip_horizontal.grid(row=2, column=0, pady=10)
+        self.button_flip_horizontal.grid(row=3, column=0, pady=(0, 10))
 
         self.button_flip_vertical = tk.Button(self.frame2, text= "Vertical Flip", command = lambda : self.flip_image_btn(0))
-        self.button_flip_vertical.grid(row=2, column=1)
+        self.button_flip_vertical.grid(row=3, column=1, pady=(0, 10))
 
         self.slider_brightness_text_label = tk.Label(self.frame2, text="Brightness")
-        self.slider_brightness_text_label.grid(row=3, column=0, columnspan=2)
+        self.slider_brightness_text_label.grid(row=4, column=0, columnspan=2)
         self.slider_brightness = tk.Scale(
             self.frame2, 
             from_ = 0, 
@@ -45,10 +48,10 @@ class ImageModifierApp:
             command = self.change_brightness_slider
         )
         self.slider_brightness.set(1)
-        self.slider_brightness.grid(row=4, column=0, columnspan=2)
+        self.slider_brightness.grid(row=5, column=0, columnspan=2)
 
         self.slider_rotate_text_label = tk.Label(self.frame2, text="Rotation Degree")
-        self.slider_rotate_text_label.grid(row=5, column=0, columnspan=2)
+        self.slider_rotate_text_label.grid(row=6, column=0, columnspan=2)
         self.slider_rotate = tk.Scale(
             self.frame2, 
             from_ = -180, 
@@ -58,10 +61,10 @@ class ImageModifierApp:
             resolution = 1, 
             command = self.rotate_image_slider
         )
-        self.slider_rotate.grid(row=6, column=0, columnspan=2)
+        self.slider_rotate.grid(row=7, column=0, columnspan=2)
 
         self.slider_rescale_text_label = tk.Label(self.frame2, text="Image Size Multiplier")
-        self.slider_rescale_text_label.grid(row=7, column=0, columnspan=2)
+        self.slider_rescale_text_label.grid(row=8, column=0, columnspan=2)
         self.slider_rescale = tk.Scale(
             self.frame2, 
             from_ = 0.5, 
@@ -72,7 +75,16 @@ class ImageModifierApp:
             command = self.rescale_image_slider
         )
         self.slider_rescale.set(1)
-        self.slider_rescale.grid(row=8, column=0, columnspan=2)
+        self.slider_rescale.grid(row=9, column=0, columnspan=2)
+
+        self.button_sharpen_img = tk.Button(self.frame2, text= "Sharpen Toggle", command = self.sharpen_toggle_btn)
+        self.button_sharpen_img.grid(row=10, column=0, columnspan=2, pady=(10, 0))
+
+        self.button_deblur_img = tk.Button(self.frame2, text= "Deblur Toggle", command = self.deblur_toggle_btn)
+        self.button_deblur_img.grid(row=11, column=0, columnspan=2, pady=(10, 0))
+
+        self.button_sobel_ed_img = tk.Button(self.frame2, text= "Sobel ED Toggle", command = self.sobel_ed_toggle_btn)
+        self.button_sobel_ed_img.grid(row=12, column=0, columnspan=2, pady=(10, 0))
 
 
     def __update_canvas(self):
@@ -111,6 +123,10 @@ class ImageModifierApp:
         self.current_modified_image.binary_threshold_toggle()
         self.__update_canvas()
     
+    def grayscale_toggle_btn(self):
+        self.current_modified_image.grayscale_toggle()
+        self.__update_canvas()
+    
     def flip_image_btn(self, mode : int):
         self.current_modified_image.flip_image(mode)
         self.__update_canvas()
@@ -127,6 +143,17 @@ class ImageModifierApp:
         self.current_modified_image.rescale_image(multiplier)
         self.__update_canvas()
 
+    def sharpen_toggle_btn(self):
+        self.current_modified_image.sharpen_toggle()
+        self.__update_canvas()
+    
+    def deblur_toggle_btn(self):
+        self.current_modified_image.deblur_toggle()
+        self.__update_canvas()
+    
+    def sobel_ed_toggle_btn(self):
+        self.current_modified_image.sobel_ed_toggle()
+        self.__update_canvas()
         
 
 class ModifiedImage:
@@ -142,6 +169,11 @@ class ModifiedImage:
         self.img_display_height = 0
 
         self.is_binary_threshold = False
+        self.is_grayscale = False
+        self.is_sharpen = False
+        self.is_deblur = False
+        self.is_sobel_ed = False
+
         self.brightness_value = 1
         self.rotate_degree = 0
         self.rescale_multiplier = 1
@@ -160,6 +192,21 @@ class ModifiedImage:
             # Apply binary threshold
             if self.is_binary_threshold:
                 _, tmp_img = cv2.threshold(tmp_img, 128, 255, cv2.THRESH_BINARY)
+            
+            # Apply grayscale
+            if self.is_grayscale:
+                tmp_img = cv2.cvtColor(tmp_img, cv2.COLOR_BGR2GRAY)
+            
+            # Apply sharpen
+            if self.is_sharpen:
+                kernel = np.array([[0, -1, 0],
+                                    [-1, 5, -1],
+                                    [0, -1, 0]])
+                tmp_img = self.__convolution(tmp_img, kernel)
+            
+            # Apply deblur
+
+            # Apply soble edge detection
             
             # Prepare the image for display which includes resizing the displayed image
             self.img_display = self.__array_to_photoimage_resize(tmp_img)
@@ -180,6 +227,26 @@ class ModifiedImage:
         img_array = ImageTk.PhotoImage(img_array)
 
         return img_array
+
+    def __convolution(self, img : np.ndarray, kernel : np.ndarray):
+        # Grayscale image only
+        img_rows, img_cols = img.shape
+        kernel_rows, kernel_cols = kernel.shape
+        
+        res_rows = img_rows - kernel_rows + 1
+        res_cols = img_cols - kernel_cols + 1
+        
+        img_res = np.zeros((res_rows, res_cols))
+        
+        max_grayness = np.amax(img)
+        for i in range(res_rows):
+            for j in range(res_cols):
+                img_res[i][j] = np.clip(
+                    np.sum(img[i : i+kernel_rows, j : j+kernel_cols] * kernel),
+                    0, max_grayness
+                )
+        
+        return img_res
     
     def open_image(self, canvas_width, canvas_height):
         tmp_file_path = filedialog.askopenfilename()
@@ -234,6 +301,12 @@ class ModifiedImage:
 
         # This will call messagebox error if img hasnt been loaded yet
         self.__apply_change()
+    
+    def grayscale_toggle(self):
+        if self.img is not None:
+            self.is_grayscale = not self.is_grayscale
+        
+        self.__apply_change()
 
     def flip_image(self, mode):
         if self.img is not None:
@@ -254,6 +327,21 @@ class ModifiedImage:
         if self.img is not None:
             self.rescale_multiplier = float(multiplier)
             self.__apply_change()
+    
+    def sharpen_toggle(self):
+        if self.img is not None:
+            self.is_sharpen = not self.is_sharpen
+        self.__apply_change()
+
+    def sharpen_toggle(self):
+        if self.img is not None:
+            self.is_deblur = not self.is_deblur
+        self.__apply_change()
+    
+    def sobel_ed_toggle(self):
+        if self.img is not None:
+            self.is_sobel_ed = not self.is_sobel_ed
+        self.__apply_change()
         
 
 def main():
